@@ -97,9 +97,20 @@ npx tsx prisma/seed.ts   # Seed test data
 - Language: Portuguese (Brazilian)
 - Code comments: English
 
+## Security Architecture
+- Middleware (src/middleware.ts) handles route protection:
+  - API routes return JSON 401/403 responses
+  - Page routes redirect to /login or /dashboard
+- Teacher API endpoints filter data by classroom:
+  - GET endpoints only return data for teacher's classroom
+  - POST endpoints validate child belongs to teacher's classroom
+  - ADMIN/SUPER_ADMIN bypass classroom restrictions
+- Role-based access: SUPER_ADMIN > ADMIN > TEACHER > PARENT
+
 ## For Collaborators
 This project follows standard Next.js 14 patterns with:
 - Server components for protected pages with session checking
 - Client components for interactive features with useSession hook
-- API routes with role-based authorization
+- API routes with role-based authorization via middleware
 - Prisma for database access with PostgreSQL adapter
+- Classroom-based data isolation for teacher role
