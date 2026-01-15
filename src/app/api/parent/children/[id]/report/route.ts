@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: NextRequest,
@@ -139,7 +139,7 @@ export async function GET(
       recorded_at: latestRoutine?.logged_at || null,
       teacher: latestRoutine?.recorded_by?.full_name || null,
     },
-    routine_logs: routineLogs.map((log) => ({
+    routine_logs: routineLogs.map((log: typeof routineLogs[number]) => ({
       id: log.id,
       mood: log.mood,
       food_intake_pct: log.food_intake_pct,
@@ -149,7 +149,7 @@ export async function GET(
       logged_at: log.logged_at,
       teacher: log.recorded_by.full_name,
     })),
-    incidents: incidents.map((inc) => ({
+    incidents: incidents.map((inc: typeof incidents[number]) => ({
       id: inc.id,
       severity: inc.severity,
       description: inc.description,
@@ -157,7 +157,7 @@ export async function GET(
       occurred_at: inc.occurred_at,
       teacher: inc.recorded_by.full_name,
     })),
-    learning: learningEvents.map((evt) => ({
+    learning: learningEvents.map((evt: typeof learningEvents[number]) => ({
       id: evt.id,
       activity: evt.activity,
       description: evt.description,

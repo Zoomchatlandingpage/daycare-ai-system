@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -40,7 +40,7 @@ export async function GET() {
     );
   }
 
-  const children = parent.children.map((link) => ({
+  const children = parent.children.map((link: typeof parent.children[number]) => ({
     ...link.child,
     relationship: link.relationship,
     is_primary: link.is_primary,

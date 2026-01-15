@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
@@ -98,20 +98,7 @@ export default function ChildReportPage() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-    } else if (status === "authenticated") {
-      const role = session?.user?.role;
-      if (role !== "PARENT" && role !== "ADMIN" && role !== "SUPER_ADMIN") {
-        router.push("/dashboard");
-      } else {
-        fetchReport();
-      }
-    }
-  }, [status, session, router, childId, selectedDate]);
-
-  const fetchReport = async () => {
+  const fetchReport = useCallback(async () => {
     setLoading(true);
     try {
       const dateStr = selectedDate.toISOString().split("T")[0];
@@ -129,7 +116,20 @@ export default function ChildReportPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [childId, selectedDate, router]);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    } else if (status === "authenticated") {
+      const role = session?.user?.role;
+      if (role !== "PARENT" && role !== "ADMIN" && role !== "SUPER_ADMIN") {
+        router.push("/dashboard");
+      } else {
+        fetchReport();
+      }
+    }
+  }, [status, session, router, fetchReport]);
 
   const changeDate = (days: number) => {
     const newDate = new Date(selectedDate);
