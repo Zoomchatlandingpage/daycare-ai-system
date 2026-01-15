@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daycare AI System - Documentation</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; min-height: 100vh; background: #f5f5f5; }
+    .sidebar { width: 280px; background: #1a1a2e; color: white; padding: 20px; position: fixed; height: 100vh; overflow-y: auto; }
+    .sidebar h1 { font-size: 1.4rem; margin-bottom: 10px; color: #64ffda; }
+    .sidebar p { font-size: 0.85rem; color: #888; margin-bottom: 20px; }
+    .nav-item { display: block; padding: 12px 16px; margin: 8px 0; background: rgba(255,255,255,0.05); border-radius: 8px; color: #ccc; text-decoration: none; cursor: pointer; transition: all 0.2s; }
+    .nav-item:hover, .nav-item.active { background: rgba(100,255,218,0.15); color: #64ffda; }
+    .main { margin-left: 280px; flex: 1; padding: 40px; max-width: 900px; }
+    .content { background: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+    .content h1, .content h2, .content h3 { color: #1a1a2e; margin: 24px 0 12px; }
+    .content h1 { font-size: 2rem; border-bottom: 2px solid #64ffda; padding-bottom: 10px; }
+    .content h2 { font-size: 1.5rem; }
+    .content h3 { font-size: 1.2rem; }
+    .content p { line-height: 1.7; color: #333; margin: 12px 0; }
+    .content pre { background: #1a1a2e; color: #64ffda; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 16px 0; }
+    .content code { background: #e8e8e8; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    .content pre code { background: transparent; padding: 0; }
+    .content ul, .content ol { margin: 12px 0 12px 24px; }
+    .content li { margin: 6px 0; line-height: 1.6; }
+    .content table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    .content th, .content td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    .content th { background: #f0f0f0; }
+    .content blockquote { border-left: 4px solid #64ffda; padding-left: 16px; margin: 16px 0; color: #666; }
+    .loading { text-align: center; padding: 60px; color: #888; }
+    @media (max-width: 768px) {
+      .sidebar { width: 100%; height: auto; position: relative; }
+      .main { margin-left: 0; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="sidebar">
+    <h1>Daycare AI System</h1>
+    <p>Trust Infrastructure Documentation</p>
+    <div id="nav"></div>
+  </nav>
+  <main class="main">
+    <div class="content" id="content">
+      <div class="loading">Loading documentation...</div>
+    </div>
+  </main>
+  <script>
+    let currentDoc = 'readme';
+    
+    async function loadNav() {
+      const res = await fetch('/api/docs');
+      const docs = await res.json();
+      const nav = document.getElementById('nav');
+      nav.innerHTML = docs.map(d => 
+        `<div class="nav-item ${d.id === currentDoc ? 'active' : ''}" data-id="${d.id}">${d.title}</div>`
+      ).join('');
+      nav.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => loadDoc(item.dataset.id));
+      });
+    }
+    
+    async function loadDoc(id) {
+      currentDoc = id;
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.id === id);
+      });
+      const content = document.getElementById('content');
+      content.innerHTML = '<div class="loading">Loading...</div>';
+      const res = await fetch(`/api/docs/${id}`);
+      const doc = await res.json();
+      content.innerHTML = doc.html;
+    }
+    
+    loadNav().then(() => loadDoc('readme'));
+  </script>
+</body>
+</html>
