@@ -6,6 +6,7 @@ This is a Trust Infrastructure system for Daycare Management. It includes:
 - PostgreSQL database with Prisma ORM
 - NextAuth.js authentication with role-based access
 - Next.js 14 with App Router and TailwindCSS
+- OpenAI integration via Replit AI Integrations (no API key required)
 
 ## Project Structure
 ```
@@ -16,6 +17,8 @@ This is a Trust Infrastructure system for Daycare Management. It includes:
       /admin           - Admin API endpoints (stats, children, teachers, parents, knowledge)
       /teacher         - Teacher API endpoints (children, routine, incidents, learning)
       /parent          - Parent API endpoints (children, reports)
+      /chat            - AI chat endpoint with role-based routing
+      /leads           - Lead capture endpoint
     /admin             - Admin panel pages
       /children        - Children management
       /teachers        - Teachers management
@@ -29,9 +32,16 @@ This is a Trust Infrastructure system for Daycare Management. It includes:
       /routine         - Routine logging (mood, food, sleep, diaper)
       /incident        - Incident reporting
       /learning        - Learning event logging
-  /components          - React components (Providers)
+  /components          - React components (Providers, ChatWidget)
   /generated           - Prisma generated client
-  /lib                 - Utilities (prisma, auth)
+  /lib                 - Utilities (prisma, auth, agents)
+    /agents            - AI agent services
+      openai.ts        - OpenAI client wrapper
+      router.ts        - Agent router (routes by user role)
+      enrollment.ts    - Enrollment agent for landing page
+      parent-access.ts - Parent access agent
+      teacher-assistant.ts - Teacher assistant agent
+      knowledge.ts     - Knowledge base retrieval
   /types               - TypeScript type definitions
 /prisma
   /migrations          - Database migrations
@@ -47,6 +57,7 @@ This is a Trust Infrastructure system for Daycare Management. It includes:
 - PostgreSQL with Prisma 7
 - NextAuth.js
 - Lucide React icons
+- OpenAI via Replit AI Integrations
 
 ## Database Schema
 Main tables:
@@ -92,17 +103,56 @@ npx tsx prisma/seed.ts   # Seed test data
 - GET /api/parent/children/[id] - Get child details
 - GET /api/parent/children/[id]/report - Daily report (routine, incidents, learning)
 
+### AI APIs
+- POST /api/chat - Streaming chat with role-based agent routing
+- POST /api/leads - Create/update enrollment leads
+
+## AI Agents Architecture
+
+### Router (Agent 01)
+Routes chat requests based on user session:
+- No session → Enrollment Agent
+- PARENT role → Parent Access Agent
+- TEACHER role → Teacher Assistant Agent
+- ADMIN/SUPER_ADMIN → Teacher Assistant Agent
+
+### Enrollment Agent (Agent 02)
+- Target: Unauthenticated users on landing page
+- Capabilities: Answer questions about the daycare, collect lead information, schedule visits
+- Knowledge base: ENROLLMENT documents
+
+### Parent Access Agent (Agent 03)
+- Target: Authenticated parents
+- Capabilities: Answer questions about routines, explain portal usage, provide guidance
+- Context: Parent's children information
+- Note: Daily reports use direct query, not AI
+
+### Teacher Assistant Agent (Agent 04)
+- Target: Teachers and admins
+- Capabilities: Suggest activities, help with descriptions, answer pedagogical questions
+- Context: Teacher's classroom and children count
+
 ## Recent Changes
 - January 2026: Phase 1 complete - Database, Auth, Base Layout
 - January 2026: Phase 2 complete - Admin Panel + Teacher App
 - January 2026: Phase 2 corrections - Fixed schema mismatches (field names, relations, enums)
 - January 2026: Phase 3 complete - Parent Portal with daily reports
+- January 2026: Phase 4 started - AI Agents with OpenAI integration
 
 ## Phases
 - Phase 1: Database, Auth, Base Layout (COMPLETE)
 - Phase 2: Admin Panel + Teacher App (COMPLETE)
 - Phase 3: Parent Portal with direct-query reports (COMPLETE)
-- Phase 4: AI Agents integration (PENDING)
+- Phase 4: AI Agents integration (IN PROGRESS)
+  - [x] OpenAI integration setup
+  - [x] Agent router implementation
+  - [x] Enrollment agent
+  - [x] Parent access agent
+  - [x] Teacher assistant agent
+  - [x] Chat widget on landing page
+  - [x] Knowledge base integration
+  - [ ] Rate limiting / 3 strikes system
+  - [ ] Lead capture integration
 
 ## User Preferences
 - Language: Portuguese (Brazilian)
@@ -140,3 +190,5 @@ This project follows standard Next.js 14 patterns with:
 - Prisma for database access with PostgreSQL adapter
 - Classroom-based data isolation for teacher role
 - Parent-child link validation for parent portal access
+- AI agents with streaming SSE responses
+- Knowledge base for dynamic agent context

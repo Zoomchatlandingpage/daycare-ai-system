@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { School, Users, GraduationCap, Shield } from "lucide-react";
+import ChatWidget from "@/components/ChatWidget";
 
 export default function Home() {
   return (
@@ -88,6 +89,8 @@ export default function Home() {
           <p>Daycare AI System - Infraestrutura de Confiança</p>
         </div>
       </footer>
+
+      <ChatWidget />
     </div>
   );
 }
