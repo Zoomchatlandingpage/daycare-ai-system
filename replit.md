@@ -1,34 +1,67 @@
-# Daycare AI System - Documentation
+# Daycare AI System
 
 ## Overview
-This is a documentation viewer for the Daycare AI System project. The repository contains specifications, schemas, and prompts for building a Trust Infrastructure for Daycare Management.
+This is a Trust Infrastructure system for Daycare Management. It includes:
+- Multi-agent AI architecture for enrollment, parent portal, and teacher tools
+- PostgreSQL database with Prisma ORM
+- NextAuth.js authentication with role-based access
+- Next.js 14 with App Router and TailwindCSS
 
 ## Project Structure
-- `/docs` - Documentation files
-  - `/docs/schema` - Database schema specifications (Prisma)
-  - `/docs/interfaces` - UI/UX interface specifications
-- `/prompts` - AI prompts including the mega-prompt for Replit
-- `/public` - Static frontend files
-- `server.js` - Express server for documentation viewer
-
-## Running the Project
-The project runs an Express server that renders markdown documentation.
-
-```bash
-npm start
+```
+/src
+  /app           - Next.js App Router pages
+    /api/auth    - NextAuth.js API routes
+    /admin       - Admin panel (Phase 2)
+    /dashboard   - Main dashboard
+    /login       - Login page
+    /parent      - Parent portal (Phase 3)
+    /teacher     - Teacher app (Phase 2)
+  /components    - React components
+  /generated     - Prisma generated client
+  /lib           - Utilities (prisma, auth)
+  /types         - TypeScript type definitions
+/prisma
+  /migrations    - Database migrations
+  schema.prisma  - Database schema
+  seed.ts        - Seed script for test data
+/docs            - Documentation and specifications
+/prompts         - AI prompts
 ```
 
 ## Tech Stack
-- Node.js 20
-- Express.js
-- Marked (Markdown parser)
+- Next.js 14 (App Router)
+- TailwindCSS
+- PostgreSQL with Prisma 7
+- NextAuth.js
+- Lucide React icons
+
+## Database Schema
+See `/docs/schema/prisma-schema.md` for complete schema documentation.
+
+Main tables:
+- User, Parent, Teacher, Child
+- ParentChildLink (N:N relationship)
+- RoutineLog, Incident, LearningEvent
+- Lead (enrollment funnel)
+- StrikeLog, BlockedEntity (security)
+- KnowledgeDocument, AgentConfig (AI)
+
+## Test Accounts
+- Admin: admin@daycare.com / admin123
+- Teacher: professor@daycare.com / teacher123  
+- Parent: pai@daycare.com / parent123
+
+## Development
+```bash
+npm run dev       # Start dev server on port 5000
+npx prisma studio # Open database viewer
+npx tsx prisma/seed.ts  # Seed test data
+```
 
 ## Recent Changes
-- January 2026: Initial setup of documentation viewer for GitHub import
+- January 2026: Phase 1 complete - Database, Auth, Base Layout
 
-## Purpose
-This repository is a specification-only project. It contains all the technical documentation to build a Daycare AI System with:
-- Multi-agent architecture (Router, Enrollment, Parent Access, Teacher Assistant)
-- PostgreSQL database with Prisma ORM
-- Next.js frontend (to be built from specs)
-- Security with 3-strikes system
+## User Preferences
+- Language: Portuguese (Brazilian)
+- Code comments: English

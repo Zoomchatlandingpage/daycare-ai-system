@@ -15,15 +15,15 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Documentation Server"
+args = "Daycare AI"
 
 [[workflows.workflow]]
-name = "Documentation Server"
+name = "Daycare AI"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node server.js"
+args = "npm run dev"
 waitForPort = 5000
 
 [workflows.workflow.metadata]
@@ -36,3 +36,8 @@ externalPort = 80
 [deployment]
 deploymentTarget = "autoscale"
 run = ["node", "server.js"]
+
+[userenv]
+
+[userenv.shared]
+NEXTAUTH_URL = "https://4f9e6a67-6023-42ae-b4ed-d254c545f06c-00-uyjum5pxqrwq.spock.replit.dev"

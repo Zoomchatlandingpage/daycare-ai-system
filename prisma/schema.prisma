@@ -1,0 +1,296 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum LeadStatus {
+  NEW_LEAD
+  CONTACTED
+  VISIT_SCHEDULED
+  VISITED
+  WAITLISTED
+  ENROLLED
+  REJECTED
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum Mood {
+  VERY_HAPPY
+  HAPPY
+  NEUTRAL
+  SAD
+  TIRED
+  SICK
+}
+
+enum DiaperStatus {
+  CLEAN
+  WET
+  DIRTY
+  NOT_APPLICABLE
+}
+
+enum UserRole {
+  PARENT
+  TEACHER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AgentType {
+  ROUTER
+  ENROLLMENT
+  PARENT_ACCESS
+  TEACHER_ASSISTANT
+}
+
+enum DocumentType {
+  POLICY
+  SCHEDULE
+  FAQ
+  RULES
+  CURRICULUM
+  HEALTH_PROTOCOL
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password_hash String
+  role          UserRole  @default(PARENT)
+  is_active     Boolean   @default(true)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  parent        Parent?
+  teacher       Teacher?
+  sessions      Session[]
+  strike_logs   StrikeLog[]
+}
+
+model Session {
+  id            String    @id @default(uuid())
+  user_id       String
+  user          User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  token         String    @unique
+  ip_address    String?
+  user_agent    String?
+  expires_at    DateTime
+  created_at    DateTime  @default(now())
+
+  @@index([token])
+  @@index([user_id])
+}
+
+model StrikeLog {
+  id            String    @id @default(uuid())
+  user_id       String?
+  user          User?     @relation(fields: [user_id], references: [id])
+  ip_address    String
+  action        String
+  details       String?
+  occurred_at   DateTime  @default(now())
+
+  @@index([ip_address])
+  @@index([user_id])
+}
+
+model BlockedEntity {
+  id              String    @id @default(uuid())
+  identifier      String    @unique
+  identifier_type String
+  reason          String
+  strike_count    Int       @default(1)
+  blocked_at      DateTime  @default(now())
+  unblock_at      DateTime?
+  admin_notified  Boolean   @default(false)
+
+  @@index([identifier])
+}
+
+model Parent {
+  id          String              @id @default(uuid())
+  user_id     String              @unique
+  user        User                @relation(fields: [user_id], references: [id])
+  full_name   String
+  email       String              @unique
+  phone       String
+  address     String?
+  created_at  DateTime            @default(now())
+
+  children    ParentChildLink[]
+}
+
+model Teacher {
+  id          String    @id @default(uuid())
+  user_id     String    @unique
+  user        User      @relation(fields: [user_id], references: [id])
+  full_name   String
+  email       String    @unique
+  phone       String
+  classroom   String?
+  is_active   Boolean   @default(true)
+  created_at  DateTime  @default(now())
+
+  routine_logs    RoutineLog[]
+  incidents       Incident[]
+  learning_events LearningEvent[]
+}
+
+model Child {
+  id                  String              @id @default(uuid())
+  full_name           String
+  birth_date          DateTime
+  classroom           String
+  photo_url           String?
+  allergies           String?
+  medical_notes       String?
+  emergency_contact   String?
+  created_at          DateTime            @default(now())
+
+  parents             ParentChildLink[]
+  routine_logs        RoutineLog[]
+  incidents           Incident[]
+  learning_participants LearningParticipant[]
+}
+
+model ParentChildLink {
+  id            String    @id @default(uuid())
+  parent_id     String
+  parent        Parent    @relation(fields: [parent_id], references: [id])
+  child_id      String
+  child         Child     @relation(fields: [child_id], references: [id])
+  relationship  String    @default("parent")
+  is_primary    Boolean   @default(false)
+  can_pickup    Boolean   @default(true)
+  created_at    DateTime  @default(now())
+
+  @@unique([parent_id, child_id])
+  @@index([parent_id])
+  @@index([child_id])
+}
+
+model RoutineLog {
+  id              String        @id @default(uuid())
+  child_id        String
+  child           Child         @relation(fields: [child_id], references: [id])
+  recorded_by_id  String
+  recorded_by     Teacher       @relation(fields: [recorded_by_id], references: [id])
+
+  mood            Mood
+  food_intake_pct Int
+  sleep_minutes   Int
+  diaper          DiaperStatus  @default(NOT_APPLICABLE)
+  notes           String?
+
+  logged_at       DateTime      @default(now())
+
+  @@index([child_id, logged_at])
+}
+
+model Incident {
+  id              String    @id @default(uuid())
+  child_id        String
+  child           Child     @relation(fields: [child_id], references: [id])
+  recorded_by_id  String
+  recorded_by     Teacher   @relation(fields: [recorded_by_id], references: [id])
+
+  description     String
+  severity        Severity
+  action_taken    String?
+  parent_notified Boolean   @default(false)
+
+  occurred_at     DateTime  @default(now())
+
+  @@index([child_id, occurred_at])
+  @@index([severity])
+}
+
+model LearningEvent {
+  id              String    @id @default(uuid())
+  recorded_by_id  String
+  recorded_by     Teacher   @relation(fields: [recorded_by_id], references: [id])
+
+  activity        String
+  description     String
+  skills          String[]
+  classroom       String?
+  is_group        Boolean   @default(false)
+
+  logged_at       DateTime  @default(now())
+
+  participants    LearningParticipant[]
+
+  @@index([classroom, logged_at])
+}
+
+model LearningParticipant {
+  id                String        @id @default(uuid())
+  learning_event_id String
+  learning_event    LearningEvent @relation(fields: [learning_event_id], references: [id])
+  child_id          String
+  child             Child         @relation(fields: [child_id], references: [id])
+  individual_notes  String?
+
+  @@unique([learning_event_id, child_id])
+}
+
+model Lead {
+  id            String      @id @default(uuid())
+  parent_name   String
+  email         String
+  phone         String
+  child_name    String?
+  child_age     Int?
+  status        LeadStatus  @default(NEW_LEAD)
+  source        String?
+  notes         String?
+  assigned_to   String?
+
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+
+  @@index([status])
+  @@index([created_at])
+}
+
+model KnowledgeDocument {
+  id            String        @id @default(uuid())
+  title         String
+  content       String
+  document_type DocumentType
+  agent_target  AgentType[]
+  version       String        @default("1.0")
+  is_active     Boolean       @default(true)
+
+  uploaded_by   String
+  tags          String[]
+
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+
+  @@index([document_type])
+  @@index([is_active])
+}
+
+model AgentConfig {
+  id              String      @id @default(uuid())
+  agent_type      AgentType   @unique
+  system_prompt   String
+  temperature     Float       @default(0.7)
+  max_tokens      Int         @default(1000)
+  is_active       Boolean     @default(true)
+
+  updated_at      DateTime    @updatedAt
+  updated_by      String
+}
