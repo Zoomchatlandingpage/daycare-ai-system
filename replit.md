@@ -151,6 +151,8 @@ Routes chat requests based on user session:
   - [x] Teacher assistant agent
   - [x] Chat widget on landing page
   - [x] Knowledge base integration
+  - [x] Magic Input for teacher app (AI text interpretation)
+  - [x] /api/teacher/interpret endpoint
   - [ ] Rate limiting / 3 strikes system
   - [ ] Lead capture integration
 
