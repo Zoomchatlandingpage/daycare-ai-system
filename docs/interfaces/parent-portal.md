@@ -1,204 +1,271 @@
-# 👨‍👩‍👧 Parent Portal - Interface de Saída
+# 👨‍👩‍👧 Parent Portal - Interface de Saída (v1.2)
 
 > **Rota:** `/parent`
 > > **Acesso:** Protegido (role: parent)
-> > > **Função:** Visualização de relatórios SOB DEMANDA
+> > > **Arquitetura:** Query Direta (Sem IA para visualização)
 > > >
 > > > ---
 > > >
-> > > ## ⚠️ REGRA CRÍTICA
+> > > ## ⚠️ REGRAS CRÍTICAS
 > > >
-> > > **RELATÓRIOS SÃO SOB DEMANDA**
-> > > - NÃO gerar relatórios automaticamente
-> > > - - NÃO enviar notificações diárias
-> > >   - - Pai ESCOLHE quando quer ver o relatório
-> > >     - - Pai SELECIONA a data específica
+> > > ### 1. Relatórios são SOB DEMANDA
+> > > - ❌ NÃO gerar relatórios automaticamente
+> > > - - ❌ NÃO enviar notificações diárias
+> > >   - - ✅ Pai ESCOLHE quando quer ver o relatório
+> > >     - - ✅ Pai SELECIONA a data específica
 > > >      
-> > >       - ---
+> > >       - ### 2. Visualização é QUERY DIRETA (Sem IA)
+> > >       - - ❌ NÃO usar LLM para renderizar dados
+> > >         - - ✅ Frontend exibe dados brutos do banco
+> > >           - - ✅ Componentes React renderizam JSON
+> > >            
+> > >             - ---
+> > >
+> > > ## Arquitetura (Determinística)
+> > >
+> > > ```
+> > > ┌─────────────────────────────────────────────────────────────────┐
+> > > │  PAI CLICA "GERAR RELATÓRIO"                                    │
+> > > └─────────────────────┬───────────────────────────────────────────┘
+> > >                       │
+> > >                       ▼
+> > > ┌─────────────────────────────────────────────────────────────────┐
+> > > │  FRONTEND (Next.js)                                             │
+> > > │  GET /api/parent/report?child_id=xxx&date=2026-01-14            │
+> > > └─────────────────────┬───────────────────────────────────────────┘
+> > >                       │
+> > >                       ▼
+> > > ┌─────────────────────────────────────────────────────────────────┐
+> > > │  API ROUTE (Prisma Query)                                       │
+> > > │  1. Verifica ParentChildLink (segurança)                        │
+> > > │  2. Query routine_logs                                          │
+> > > │  3. Query incidents                                             │
+> > > │  4. Query learning_events + participants                        │
+> > > └─────────────────────┬───────────────────────────────────────────┘
+> > >                       │
+> > >                       ▼
+> > > ┌─────────────────────────────────────────────────────────────────┐
+> > > │  JSON RESPONSE (Dados Brutos)                                   │
+> > > └─────────────────────┬───────────────────────────────────────────┘
+> > >                       │
+> > >                       ▼
+> > > ┌─────────────────────────────────────────────────────────────────┐
+> > > │  REACT COMPONENTS (Renderização Visual)                         │
+> > > │  <MoodEmoji>, <FoodProgress>, <SleepBar>, etc.                  │
+> > > └─────────────────────────────────────────────────────────────────┘
+> > > ```
+> > >
+> > > **Benefícios:**
+> > > - ⚡ Latência: ~50ms (vs 3-5s com IA)
+> > > - - 💰 Custo: $0 (vs $0.01-0.05 por relatório com IA)
+> > >   - - 🎯 Determinístico: Dados exatos, sem alucinações
+> > >    
+> > >     - ---
 > > >
 > > > ## Fluxo do Usuário
 > > >
 > > > ```
 > > > 1. Pai faz login
-> > > 2. Vê lista "Meus Filhos"
+> > > 2. Vê lista "Meus Filhos" (via ParentChildLink)
 > > > 3. Clica em uma criança
 > > > 4. Seleciona uma DATA no calendário
 > > > 5. Clica em "Gerar Relatório"
-> > > 6. Sistema consulta BD + Agent 03 sintetiza
-> > > 7. Relatório humanizado é exibido
+> > > 6. API executa queries no PostgreSQL
+> > > 7. Frontend renderiza componentes visuais
 > > > ```
 > > >
 > > > ---
 > > >
-> > > ## Componentes da Interface
+> > > ## API: /api/parent/report
 > > >
-> > > ### 1. Dashboard Principal
-> > > ```jsx
-> > > // Mostra lista de filhos do pai logado
-> > > <ChildrenList>
-> > >   {children.map(child => (
-> > >     <ChildCard
-> > >       key={child.id}
-> > >       name={child.full_name}
-> > >       classroom={child.classroom}
-> > >       avatar={child.avatar}
-> > >     />
-> > >   ))}
-> > > </ChildrenList>
+> > > ### Lógica de Segurança (CRÍTICO)
+> > >
+> > > ```typescript
+> > > // SEMPRE verificar antes de qualquer query
+> > > async function checkAccess(parentId: string, childId: string) {
+> > >   const link = await prisma.parentChildLink.findUnique({
+> > >     where: {
+> > >       parent_id_child_id: {
+> > >         parent_id: parentId,
+> > >         child_id: childId
+> > >       }
+> > >     }
+> > >   });
+> > >
+> > >   if (!link) {
+> > >     // Log tentativa suspeita (3 Strikes)
+> > >     await prisma.strikeLog.create({
+> > >       data: {
+> > >         user_id: parentId,
+> > >         ip_address: req.ip,
+> > >         action: 'unauthorized_child_access',
+> > >         details: `Attempted access to child: ${childId}`
+> > >       }
+> > >     });
+> > >     throw new ForbiddenError('Access denied');
+> > >   }
+> > >
+> > >   return true;
+> > > }
 > > > ```
 > > >
-> > > ### 2. Tela de Detalhes da Criança
-> > > ```jsx
-> > > <ChildDetails>
-> > >   <ChildHeader name={child.full_name} classroom={child.classroom} />
+> > > ### Queries Otimizadas
 > > >
-> > >   {/* IMPORTANTE: Date Picker para selecionar data */}
-> > >   <DatePicker
-> > >     selected={selectedDate}
-> > >     onChange={setSelectedDate}
-> > >     maxDate={new Date()} // Não pode selecionar futuro
-> > >   />
+> > > ```typescript
+> > > async function getReportData(childId: string, date: Date) {
+> > >   const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+> > >   const endOfDay = new Date(date.setHours(23, 59, 59, 999));
 > > >
-> > >   {/* Botão que dispara a geração */}
-> > >   <Button
-> > >     onClick={generateReport}
-> > >     disabled={!selectedDate}
-> > >   >
-> > >     📊 Gerar Relatório do Dia
-> > >   </Button>
+> > >   // Query paralela para performance
+> > >   const [routine, incidents, learning] = await Promise.all([
+> > >     // 1. Rotina do dia
+> > >     prisma.routineLog.findFirst({
+> > >       where: {
+> > >         child_id: childId,
+> > >         logged_at: { gte: startOfDay, lte: endOfDay }
+> > >       },
+> > >       include: { recorded_by: { select: { full_name: true } } }
+> > >     }),
 > > >
-> > >   {/* Área onde o relatório aparece */}
-> > >   {report && <ReportDisplay data={report} />}
-> > > </ChildDetails>
-> > > ```
+> > >     // 2. Incidentes do dia
+> > >     prisma.incident.findMany({
+> > >       where: {
+> > >         child_id: childId,
+> > >         occurred_at: { gte: startOfDay, lte: endOfDay }
+> > >       },
+> > >       orderBy: { occurred_at: 'asc' }
+> > >     }),
 > > >
-> > > ---
-> > >
-> > > ## Lógica de Geração de Relatório
-> > >
-> > > ```javascript
-> > > async function generateReport(childId, date) {
-> > >   // 1. Buscar dados da rotina
-> > >   const routineLogs = await prisma.routineLog.findMany({
-> > >     where: {
-> > >       child_id: childId,
-> > >       logged_at: {
-> > >         gte: startOfDay(date),
-> > >         lte: endOfDay(date)
+> > >     // 3. Aprendizados (individual + grupo da turma)
+> > >     prisma.learningEvent.findMany({
+> > >       where: {
+> > >         logged_at: { gte: startOfDay, lte: endOfDay },
+> > >         OR: [
+> > >           { participants: { some: { child_id: childId } } },
+> > >           { is_group: true, classroom: child.classroom }
+> > >         ]
+> > >       },
+> > >       include: {
+> > >         participants: {
+> > >           where: { child_id: childId },
+> > >           select: { individual_notes: true }
+> > >         }
 > > >       }
-> > >     }
-> > >   });
+> > >     })
+> > >   ]);
 > > >
-> > >   // 2. Buscar incidentes do dia
-> > >   const incidents = await prisma.incident.findMany({
-> > >     where: {
-> > >       child_id: childId,
-> > >       occurred_at: {
-> > >         gte: startOfDay(date),
-> > >         lte: endOfDay(date)
-> > >       }
-> > >     }
-> > >   });
-> > >
-> > >   // 3. Buscar aprendizados (individuais + grupo da turma)
-> > >   const child = await prisma.child.findUnique({
-> > >     where: { id: childId },
-> > >     select: { classroom: true }
-> > >   });
-> > >
-> > >   const learnings = await prisma.learningActivity.findMany({
-> > >     where: {
-> > >       OR: [
-> > >         { child_id: childId }, // Atividades individuais
-> > >         {
-> > >           classroom: child.classroom,
-> > >           activity_type: 'group'
-> > >         } // Atividades em grupo da turma
-> > >       ],
-> > >       logged_at: {
-> > >         gte: startOfDay(date),
-> > >         lte: endOfDay(date)
-> > >       }
-> > >     }
-> > >   });
-> > >
-> > >   // 4. Chamar Agent 03 para sintetizar
-> > >   const report = await agent03.synthesize({
-> > >     routineLogs,
-> > >     incidents,
-> > >     learnings,
-> > >     childName: child.full_name,
-> > >     date: date
-> > >   });
-> > >
-> > >   return report;
+> > >   return { routine, incidents, learning };
 > > > }
 > > > ```
 > > >
 > > > ---
 > > >
-> > > ## Agent 03 - Síntese do Relatório
+> > > ## JSON Response Contract
 > > >
-> > > ```javascript
-> > > // Prompt para GPT-4
-> > > const systemPrompt = `
-> > > Você é um assistente de comunicação para uma creche.
-> > > Sua função é transformar dados brutos em um relatório acolhedor para os pais.
-> > >
-> > > REGRAS:
-> > > 1. Use linguagem carinhosa e profissional
-> > > 2. Destaque pontos positivos primeiro
-> > > 3. Mencione incidentes de forma cuidadosa
-> > > 4. Celebre os aprendizados
-> > > 5. Use emojis moderadamente
-> > >
-> > > FORMATO DO RELATÓRIO:
-> > > - Resumo do dia (2-3 frases)
-> > > - Rotina (alimentação, sono, humor)
-> > > - Aprendizados do dia
-> > > - Observações (se houver incidentes)
-> > > `;
-> > >
-> > > async function synthesize(data) {
-> > >   const response = await openai.chat.completions.create({
-> > >     model: "gpt-4",
-> > >     messages: [
-> > >       { role: "system", content: systemPrompt },
-> > >       { role: "user", content: JSON.stringify(data) }
-> > >     ]
-> > >   });
-> > >
-> > >   return response.choices[0].message.content;
+> > > ```json
+> > > {
+> > >   "meta": {
+> > >     "date": "2026-01-14",
+> > >     "child_name": "Alice",
+> > >     "classroom": "Turma da Tia Maria"
+> > >   },
+> > >   "routine": {
+> > >     "mood": "HAPPY",
+> > >     "food_intake_pct": 85,
+> > >     "sleep_minutes": 90,
+> > >     "diaper": "CLEAN",
+> > >     "notes": "Dia tranquilo",
+> > >     "recorded_by": "Tia Maria"
+> > >   },
+> > >   "incidents": [],
+> > >   "learning": [
+> > >     {
+> > >       "activity": "Pintura",
+> > >       "description": "Pintura com os dedos",
+> > >       "skills": ["Motor Skills", "Creativity"],
+> > >       "is_group": true,
+> > >       "individual_notes": null
+> > >     }
+> > >   ]
 > > > }
 > > > ```
 > > >
 > > > ---
 > > >
-> > > ## Exemplo de Relatório Gerado
+> > > ## Componentes React
 > > >
+> > > | Componente | Props | Visualização |
+> > > |------------|-------|--------------|
+> > > | `<MoodEmoji />` | `mood: string` | 😊 😐 😢 😴 |
+> > > | `<FoodProgress />` | `percentage: number` | Barra de progresso |
+> > > | `<SleepBar />` | `minutes: number` | "1h 30m" |
+> > > | `<DiaperStatus />` | `status: string` | ✅ ou ⚠️ |
+> > > | `<IncidentTimeline />` | `incidents: array` | Lista cronológica |
+> > > | `<LearningCard />` | `activity: object` | Card com skills |
+> > >
+> > > ### Exemplo de Componente
+> > >
+> > > ```tsx
+> > > // components/parent/MoodEmoji.tsx
+> > > const moodMap = {
+> > >   VERY_HAPPY: { emoji: '🤩', label: 'Muito Feliz', color: 'green' },
+> > >   HAPPY: { emoji: '😊', label: 'Feliz', color: 'green' },
+> > >   NEUTRAL: { emoji: '😐', label: 'Normal', color: 'yellow' },
+> > >   SAD: { emoji: '😢', label: 'Triste', color: 'orange' },
+> > >   TIRED: { emoji: '😴', label: 'Cansado', color: 'blue' },
+> > >   SICK: { emoji: '🤒', label: 'Doente', color: 'red' }
+> > > };
+> > >
+> > > export function MoodEmoji({ mood }: { mood: string }) {
+> > >   const { emoji, label, color } = moodMap[mood];
+> > >   return (
+> > >     <div className={`mood-card bg-${color}-100`}>
+> > >       <span className="text-4xl">{emoji}</span>
+> > >       <span className="text-sm">{label}</span>
+> > >     </div>
+> > >   );
+> > > }
 > > > ```
-> > > 📅 Relatório de João - 14/01/2026
 > > >
-> > > Olá! Hoje o João teve um dia muito especial na creche! 😊
+> > > ---
 > > >
-> > > 🍽️ ALIMENTAÇÃO
-> > > João comeu 85% do almoço - ótimo apetite hoje!
+> > > ## Dashboard Principal
 > > >
-> > > 😴 SONO
-> > > Descansou por 1h30 durante a soneca da tarde.
+> > > ```tsx
+> > > // app/parent/page.tsx
+> > > export default async function ParentDashboard() {
+> > >   const session = await getServerSession();
 > > >
-> > > 😊 HUMOR
-> > > Esteve feliz e animado durante todo o dia!
+> > >   // Buscar filhos do pai logado (via ParentChildLink)
+> > >   const children = await prisma.child.findMany({
+> > >     where: {
+> > >       parents: {
+> > >         some: {
+> > >           parent: {
+> > >             user_id: session.user.id
+> > >           }
+> > >         }
+> > >       }
+> > >     },
+> > >     include: {
+> > >       parents: {
+> > >         where: { parent: { user_id: session.user.id } },
+> > >         select: { relationship: true, is_primary: true }
+> > >       }
+> > >     }
+> > >   });
 > > >
-> > > 📚 APRENDIZADOS
-> > > • Individual: João conseguiu montar um quebra-cabeça de 12 peças sozinho!
-> > > • Com a turma: Trabalhamos coordenação motora com massinha de modelar.
-> > >
-> > > ℹ️ OBSERVAÇÕES
-> > > Nenhum incidente registrado hoje.
-> > >
-> > > Com carinho,
-> > > Equipe da Creche 💛
+> > >   return (
+> > >     <div className="p-4">
+> > >       <h1>Meus Filhos</h1>
+> > >       <div className="grid gap-4">
+> > >         {children.map(child => (
+> > >           <ChildCard key={child.id} child={child} />
+> > >         ))}
+> > >       </div>
+> > >     </div>
+> > >   );
+> > > }
 > > > ```
 > > >
 > > > ---
@@ -206,38 +273,19 @@
 > > > ## API Routes
 > > >
 > > > ```
-> > > GET  /api/parent/children           - Listar filhos do pai
-> > > GET  /api/parent/child/:id          - Detalhes de uma criança
-> > > POST /api/parent/report             - Gerar relatório (on-demand)
-> > >      Body: { childId, date }
+> > > GET  /api/parent/children              - Lista filhos do pai
+> > > GET  /api/parent/child/:id             - Detalhes de uma criança
+> > > GET  /api/parent/report?child_id&date  - Dados para relatório (Query Direta)
 > > > ```
 > > >
 > > > ---
 > > >
-> > > ## Segurança
+> > > ## Resumo
 > > >
-> > > ```javascript
-> > > // Middleware de autorização
-> > > async function canAccessChild(userId, childId) {
-> > >   const parent = await prisma.parent.findFirst({
-> > >     where: {
-> > >       user: { id: userId },
-> > >       children: { some: { id: childId } }
-> > >     }
-> > >   });
-> > >
-> > >   if (!parent) {
-> > >     // Log tentativa suspeita
-> > >     await prisma.securityLog.create({
-> > >       data: {
-> > >         phone_number: user.phone,
-> > >         action: 'unauthorized_child_access',
-> > >         ip_address: req.ip
-> > >       }
-> > >     });
-> > >     throw new ForbiddenError('Acesso negado');
-> > >   }
-> > >
-> > >   return true;
-> > > }
-> > > ```
+> > > | Aspecto | Decisão |
+> > > |---------|---------|
+> > > | Geração de Relatório | Query Direta (sem IA) |
+> > > | Visualização | Componentes React |
+> > > | Segurança | ParentChildLink + 3 Strikes |
+> > > | Performance | ~50ms por request |
+> > > | Custo | $0 (só banco de dados) |
