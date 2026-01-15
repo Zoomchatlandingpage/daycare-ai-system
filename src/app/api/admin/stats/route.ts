@@ -20,7 +20,7 @@ export async function GET() {
       prisma.child.count(),
       prisma.teacher.count(),
       prisma.parent.count(),
-      prisma.lead.count({ where: { status: "NEW" } }),
+      prisma.lead.count({ where: { status: "NEW_LEAD" } }),
       prisma.routineLog.count({
         where: {
           logged_at: {

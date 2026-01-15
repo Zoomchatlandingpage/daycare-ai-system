@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     },
     include: {
       child: true,
-      teacher: true,
+      recorded_by: true,
     },
     orderBy: { logged_at: "desc" },
   });
@@ -65,11 +65,11 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { child_id, log_type, details } = body;
+  const { child_id, mood, food_intake_pct, sleep_minutes, diaper, notes } = body;
 
-  if (!child_id || !log_type) {
+  if (!child_id || !mood) {
     return NextResponse.json(
-      { error: "Criança e tipo de registro são obrigatórios" },
+      { error: "Criança e humor são obrigatórios" },
       { status: 400 }
     );
   }
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let teacherId: string | null = null;
+  let recordedById: string | null = null;
 
   if (role === "TEACHER") {
     const teacher = await prisma.teacher.findUnique({
@@ -106,20 +106,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    teacherId = teacher.id;
+    recordedById = teacher.id;
   } else {
     const adminTeacher = await prisma.teacher.findUnique({
       where: { user_id: session.user.id },
     });
-    teacherId = adminTeacher?.id || null;
+    if (!adminTeacher) {
+      return NextResponse.json(
+        { error: "Administrador precisa de perfil de professor para registrar rotina" },
+        { status: 400 }
+      );
+    }
+    recordedById = adminTeacher.id;
   }
 
   const log = await prisma.routineLog.create({
     data: {
       child_id,
-      teacher_id: teacherId,
-      log_type,
-      details: details || {},
+      recorded_by_id: recordedById,
+      mood,
+      food_intake_pct: food_intake_pct || 0,
+      sleep_minutes: sleep_minutes || 0,
+      diaper: diaper || "NOT_APPLICABLE",
+      notes: notes || null,
       logged_at: new Date(),
     },
   });

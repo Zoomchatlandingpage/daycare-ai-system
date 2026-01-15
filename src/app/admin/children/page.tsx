@@ -10,13 +10,13 @@ interface Child {
   id: string;
   full_name: string;
   birth_date: string;
-  classroom: string | null;
+  classroom: string;
   allergies: string | null;
-  is_active: boolean;
-  parent_links: Array<{
+  medical_notes: string | null;
+  parents: Array<{
     parent: {
       full_name: string;
-      phone: string | null;
+      phone: string;
     };
   }>;
 }
@@ -33,7 +33,7 @@ export default function ChildrenPage() {
     birth_date: "",
     classroom: "",
     allergies: "",
-    notes: "",
+    medical_notes: "",
   });
 
   useEffect(() => {
@@ -78,7 +78,7 @@ export default function ChildrenPage() {
           birth_date: "",
           classroom: "",
           allergies: "",
-          notes: "",
+          medical_notes: "",
         });
         fetchChildren();
       }
@@ -93,7 +93,7 @@ export default function ChildrenPage() {
     const years = today.getFullYear() - birth.getFullYear();
     const months = today.getMonth() - birth.getMonth();
     if (years < 1) {
-      return `${months + (years * 12)} meses`;
+      return `${months + years * 12} meses`;
     }
     return `${years} anos`;
   };
@@ -160,9 +160,6 @@ export default function ChildrenPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Responsáveis
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -185,29 +182,21 @@ export default function ChildrenPage() {
                     {child.classroom || "-"}
                   </td>
                   <td className="px-6 py-4">
-                    {child.parent_links.map((link, i) => (
+                    {child.parents.map((link, i) => (
                       <div key={i} className="text-sm text-gray-600">
                         {link.parent.full_name}
                       </div>
                     ))}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full ${
-                        child.is_active
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {child.is_active ? "Ativo" : "Inativo"}
-                    </span>
+                    {child.parents.length === 0 && (
+                      <span className="text-gray-400">-</span>
+                    )}
                   </td>
                 </tr>
               ))}
               {filteredChildren.length === 0 && (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={4}
                     className="px-6 py-8 text-center text-gray-500"
                   >
                     Nenhuma criança encontrada
@@ -262,10 +251,11 @@ export default function ChildrenPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Turma
+                  Turma *
                 </label>
                 <input
                   type="text"
+                  required
                   value={formData.classroom}
                   onChange={(e) =>
                     setFormData({ ...formData, classroom: e.target.value })
@@ -288,12 +278,12 @@ export default function ChildrenPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Observações
+                  Observações Médicas
                 </label>
                 <textarea
-                  value={formData.notes}
+                  value={formData.medical_notes}
                   onChange={(e) =>
-                    setFormData({ ...formData, notes: e.target.value })
+                    setFormData({ ...formData, medical_notes: e.target.value })
                   }
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"

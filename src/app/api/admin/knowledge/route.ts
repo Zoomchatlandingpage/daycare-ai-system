@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { title, content, category, tags } = body;
+  const { title, content, document_type, agent_target, tags } = body;
 
   if (!title || !content) {
     return NextResponse.json(
@@ -48,8 +48,10 @@ export async function POST(request: NextRequest) {
     data: {
       title,
       content,
-      category: category || "general",
+      document_type: document_type || "FAQ",
+      agent_target: agent_target || [],
       tags: tags || [],
+      uploaded_by: session.user.id,
       is_active: true,
     },
   });

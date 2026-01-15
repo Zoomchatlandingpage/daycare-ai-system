@@ -4,83 +4,53 @@ import { useEffect, useState, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Check, Utensils, Moon, Smile, Baby } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 
-const routineTypes = {
-  meal: {
-    title: "Alimentação",
-    icon: Utensils,
-    color: "orange",
-    options: [
-      { value: "breakfast", label: "Café da manhã" },
-      { value: "lunch", label: "Almoço" },
-      { value: "snack", label: "Lanche" },
-      { value: "dinner", label: "Jantar" },
-    ],
-    levels: [
-      { value: "full", label: "Comeu tudo", emoji: "😋" },
-      { value: "partial", label: "Comeu parcialmente", emoji: "😐" },
-      { value: "little", label: "Comeu pouco", emoji: "😕" },
-      { value: "refused", label: "Recusou", emoji: "🙅" },
-    ],
-  },
-  sleep: {
-    title: "Sono",
-    icon: Moon,
-    color: "indigo",
-    options: [
-      { value: "nap", label: "Soneca" },
-      { value: "rest", label: "Descanso" },
-    ],
-    levels: [
-      { value: "deep", label: "Dormiu bem", emoji: "😴" },
-      { value: "light", label: "Sono leve", emoji: "😪" },
-      { value: "restless", label: "Agitado", emoji: "😫" },
-      { value: "refused", label: "Não dormiu", emoji: "😳" },
-    ],
-  },
-  mood: {
-    title: "Humor",
-    icon: Smile,
-    color: "yellow",
-    options: [],
-    levels: [
-      { value: "happy", label: "Feliz", emoji: "😊" },
-      { value: "calm", label: "Calmo", emoji: "😌" },
-      { value: "tired", label: "Cansado", emoji: "😔" },
-      { value: "upset", label: "Irritado", emoji: "😤" },
-      { value: "sad", label: "Triste", emoji: "😢" },
-    ],
-  },
-  bathroom: {
-    title: "Banheiro",
-    icon: Baby,
-    color: "blue",
-    options: [
-      { value: "diaper_wet", label: "Fralda molhada" },
-      { value: "diaper_dirty", label: "Fralda suja" },
-      { value: "potty", label: "Usou o penico" },
-      { value: "toilet", label: "Usou o banheiro" },
-    ],
-    levels: [],
-  },
-};
+const moodOptions = [
+  { value: "VERY_HAPPY", label: "Muito Feliz", emoji: "😊" },
+  { value: "HAPPY", label: "Feliz", emoji: "🙂" },
+  { value: "NEUTRAL", label: "Normal", emoji: "😐" },
+  { value: "SAD", label: "Triste", emoji: "😢" },
+  { value: "TIRED", label: "Cansado", emoji: "😴" },
+  { value: "SICK", label: "Doente", emoji: "🤒" },
+];
+
+const diaperOptions = [
+  { value: "CLEAN", label: "Limpa" },
+  { value: "WET", label: "Molhada" },
+  { value: "DIRTY", label: "Suja" },
+  { value: "NOT_APPLICABLE", label: "Não aplicável" },
+];
+
+const foodOptions = [
+  { value: 100, label: "Comeu tudo", emoji: "😋" },
+  { value: 75, label: "Comeu bem", emoji: "🙂" },
+  { value: 50, label: "Comeu parcialmente", emoji: "😐" },
+  { value: 25, label: "Comeu pouco", emoji: "😕" },
+  { value: 0, label: "Não comeu", emoji: "🙅" },
+];
+
+const sleepOptions = [
+  { value: 120, label: "2 horas", emoji: "😴" },
+  { value: 90, label: "1h30", emoji: "😪" },
+  { value: 60, label: "1 hora", emoji: "🙂" },
+  { value: 30, label: "30 minutos", emoji: "😐" },
+  { value: 0, label: "Não dormiu", emoji: "😳" },
+];
 
 function RoutineContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const childId = searchParams.get("child");
-  const type = searchParams.get("type") as keyof typeof routineTypes;
 
-  const [selectedOption, setSelectedOption] = useState("");
-  const [selectedLevel, setSelectedLevel] = useState("");
+  const [mood, setMood] = useState("");
+  const [foodIntake, setFoodIntake] = useState<number | null>(null);
+  const [sleepMinutes, setSleepMinutes] = useState<number | null>(null);
+  const [diaper, setDiaper] = useState("NOT_APPLICABLE");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-
-  const routineConfig = routineTypes[type] || routineTypes.meal;
-  const IconComponent = routineConfig.icon;
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -94,7 +64,7 @@ function RoutineContent() {
   }, [status, session, router]);
 
   const handleSubmit = async () => {
-    if (!childId) return;
+    if (!childId || !mood) return;
 
     setSaving(true);
     try {
@@ -103,12 +73,11 @@ function RoutineContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           child_id: childId,
-          log_type: type,
-          details: {
-            option: selectedOption,
-            level: selectedLevel,
-            notes: notes,
-          },
+          mood,
+          food_intake_pct: foodIntake ?? 0,
+          sleep_minutes: sleepMinutes ?? 0,
+          diaper,
+          notes,
         }),
       });
 
@@ -148,83 +117,99 @@ function RoutineContent() {
     );
   }
 
-  const colorClasses = {
-    orange: "bg-orange-100 text-orange-600",
-    indigo: "bg-indigo-100 text-indigo-600",
-    yellow: "bg-yellow-100 text-yellow-600",
-    blue: "bg-blue-100 text-blue-600",
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-green-600 text-white sticky top-0 z-10">
         <div className="px-4 py-4 flex items-center gap-3">
-          <Link
-            href={`/teacher`}
-            className="p-1 hover:bg-green-700 rounded"
-          >
+          <Link href={`/teacher`} className="p-1 hover:bg-green-700 rounded">
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <h1 className="text-lg font-bold">{routineConfig.title}</h1>
+          <h1 className="text-lg font-bold">Registro de Rotina</h1>
         </div>
       </nav>
 
       <main className="p-4 pb-24">
-        <div className="flex justify-center mb-6">
-          <div
-            className={`p-4 rounded-full ${colorClasses[routineConfig.color as keyof typeof colorClasses]}`}
-          >
-            <IconComponent className="h-12 w-12" />
+        <div className="mb-6">
+          <h2 className="font-medium text-gray-700 mb-3">Humor *</h2>
+          <div className="grid grid-cols-3 gap-2">
+            {moodOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setMood(option.value)}
+                className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition ${
+                  mood === option.value
+                    ? "border-green-500 bg-green-50"
+                    : "border-gray-200 bg-white"
+                }`}
+              >
+                <span className="text-2xl">{option.emoji}</span>
+                <span className="text-xs font-medium">{option.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 
-        {routineConfig.options.length > 0 && (
-          <div className="mb-6">
-            <h2 className="font-medium text-gray-700 mb-3">Tipo</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {routineConfig.options.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => setSelectedOption(option.value)}
-                  className={`p-3 rounded-xl border-2 transition ${
-                    selectedOption === option.value
-                      ? "border-green-500 bg-green-50"
-                      : "border-gray-200 bg-white"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
+        <div className="mb-6">
+          <h2 className="font-medium text-gray-700 mb-3">Alimentação</h2>
+          <div className="space-y-2">
+            {foodOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setFoodIntake(option.value)}
+                className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition ${
+                  foodIntake === option.value
+                    ? "border-green-500 bg-green-50"
+                    : "border-gray-200 bg-white"
+                }`}
+              >
+                <span className="text-xl">{option.emoji}</span>
+                <span className="font-medium">{option.label}</span>
+              </button>
+            ))}
           </div>
-        )}
-
-        {routineConfig.levels.length > 0 && (
-          <div className="mb-6">
-            <h2 className="font-medium text-gray-700 mb-3">Como foi?</h2>
-            <div className="space-y-2">
-              {routineConfig.levels.map((level) => (
-                <button
-                  key={level.value}
-                  onClick={() => setSelectedLevel(level.value)}
-                  className={`w-full p-4 rounded-xl border-2 flex items-center gap-3 transition ${
-                    selectedLevel === level.value
-                      ? "border-green-500 bg-green-50"
-                      : "border-gray-200 bg-white"
-                  }`}
-                >
-                  <span className="text-2xl">{level.emoji}</span>
-                  <span className="font-medium">{level.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        </div>
 
         <div className="mb-6">
-          <h2 className="font-medium text-gray-700 mb-3">
-            Observações (opcional)
-          </h2>
+          <h2 className="font-medium text-gray-700 mb-3">Sono</h2>
+          <div className="grid grid-cols-3 gap-2">
+            {sleepOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setSleepMinutes(option.value)}
+                className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition ${
+                  sleepMinutes === option.value
+                    ? "border-green-500 bg-green-50"
+                    : "border-gray-200 bg-white"
+                }`}
+              >
+                <span className="text-xl">{option.emoji}</span>
+                <span className="text-xs font-medium">{option.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <h2 className="font-medium text-gray-700 mb-3">Fralda</h2>
+          <div className="grid grid-cols-2 gap-2">
+            {diaperOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setDiaper(option.value)}
+                className={`p-3 rounded-xl border-2 transition ${
+                  diaper === option.value
+                    ? "border-green-500 bg-green-50"
+                    : "border-gray-200 bg-white"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <h2 className="font-medium text-gray-700 mb-3">Observações</h2>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -238,11 +223,7 @@ function RoutineContent() {
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t">
         <button
           onClick={handleSubmit}
-          disabled={
-            saving ||
-            (routineConfig.options.length > 0 && !selectedOption) ||
-            (routineConfig.levels.length > 0 && !selectedLevel)
-          }
+          disabled={saving || !mood}
           className="w-full bg-green-600 text-white py-4 rounded-xl font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
           {saving ? "Salvando..." : "Salvar Registro"}

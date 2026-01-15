@@ -25,7 +25,7 @@ export async function GET() {
           role: true,
         },
       },
-      child_links: {
+      children: {
         include: {
           child: true,
         },
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
       full_name,
       email,
-      phone: phone || null,
+      phone: phone || "",
     },
   });
 
