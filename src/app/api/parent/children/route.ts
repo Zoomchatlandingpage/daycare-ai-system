@@ -17,7 +17,6 @@ export async function GET() {
 
   if (role === "ADMIN" || role === "SUPER_ADMIN") {
     const children = await prisma.child.findMany({
-      where: { is_active: true },
       orderBy: { full_name: "asc" },
     });
     return NextResponse.json(children);

@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
 
@@ -18,10 +18,12 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const { id } = await params;
+
   const child = await prisma.child.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
-      parent_links: {
+      parents: {
         include: {
           parent: true,
         },
@@ -38,7 +40,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
 
@@ -51,18 +53,19 @@ export async function PUT(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const { id } = await params;
   const body = await request.json();
-  const { full_name, birth_date, classroom, allergies, notes, is_active } = body;
+  const { full_name, birth_date, classroom, allergies, medical_notes, emergency_contact } = body;
 
   const child = await prisma.child.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       full_name,
       birth_date: birth_date ? new Date(birth_date) : undefined,
       classroom,
       allergies,
-      notes,
-      is_active,
+      medical_notes,
+      emergency_contact,
     },
   });
 
@@ -71,7 +74,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
 
@@ -84,9 +87,10 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  await prisma.child.update({
-    where: { id: params.id },
-    data: { is_active: false },
+  const { id } = await params;
+
+  await prisma.child.delete({
+    where: { id },
   });
 
   return NextResponse.json({ success: true });

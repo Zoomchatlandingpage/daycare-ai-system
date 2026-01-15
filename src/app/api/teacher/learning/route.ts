@@ -28,14 +28,24 @@ export async function GET(request: NextRequest) {
 
   const events = await prisma.learningEvent.findMany({
     where: {
-      ...(childId ? { child_id: childId } : {}),
-      ...(classroomFilter ? { child: { classroom: classroomFilter } } : {}),
+      ...(classroomFilter ? { classroom: classroomFilter } : {}),
+      ...(childId
+        ? {
+            participants: {
+              some: { child_id: childId },
+            },
+          }
+        : {}),
     },
     include: {
-      child: true,
-      teacher: true,
+      recorded_by: true,
+      participants: {
+        include: {
+          child: true,
+        },
+      },
     },
-    orderBy: { observed_at: "desc" },
+    orderBy: { logged_at: "desc" },
     take: 50,
   });
 
@@ -55,27 +65,28 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { child_id, area, milestone, notes } = body;
+  const { child_ids, activity, description, skills, notes, is_group } = body;
 
-  if (!child_id || !area || !milestone) {
+  if (!child_ids || child_ids.length === 0 || !activity || !description) {
     return NextResponse.json(
-      { error: "Criança, área e marco são obrigatórios" },
+      { error: "Crianças, atividade e descrição são obrigatórios" },
       { status: 400 }
     );
   }
 
-  const child = await prisma.child.findUnique({
-    where: { id: child_id },
+  const children = await prisma.child.findMany({
+    where: { id: { in: child_ids } },
   });
 
-  if (!child) {
+  if (children.length !== child_ids.length) {
     return NextResponse.json(
-      { error: "Criança não encontrada" },
+      { error: "Uma ou mais crianças não encontradas" },
       { status: 404 }
     );
   }
 
-  let teacherId: string | null = null;
+  let recordedById: string | null = null;
+  let classroom: string | null = null;
 
   if (role === "TEACHER") {
     const teacher = await prisma.teacher.findUnique({
@@ -89,29 +100,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (child.classroom !== teacher.classroom) {
+    const invalidChildren = children.filter((c) => c.classroom !== teacher.classroom);
+    if (invalidChildren.length > 0) {
       return NextResponse.json(
-        { error: "Criança não pertence à sua turma" },
+        { error: "Uma ou mais crianças não pertencem à sua turma" },
         { status: 403 }
       );
     }
 
-    teacherId = teacher.id;
+    recordedById = teacher.id;
+    classroom = teacher.classroom;
   } else {
     const adminTeacher = await prisma.teacher.findUnique({
       where: { user_id: session.user.id },
     });
-    teacherId = adminTeacher?.id || null;
+    if (!adminTeacher) {
+      return NextResponse.json(
+        { error: "Administrador precisa de perfil de professor para registrar aprendizado" },
+        { status: 400 }
+      );
+    }
+    recordedById = adminTeacher.id;
+    classroom = children[0]?.classroom || null;
   }
 
   const event = await prisma.learningEvent.create({
     data: {
-      child_id,
-      teacher_id: teacherId,
-      area,
-      milestone,
-      notes: notes || null,
-      observed_at: new Date(),
+      recorded_by_id: recordedById,
+      activity,
+      description,
+      skills: skills || [],
+      classroom,
+      is_group: is_group || child_ids.length > 1,
+      logged_at: new Date(),
+      participants: {
+        create: child_ids.map((child_id: string) => ({
+          child_id,
+          individual_notes: notes || null,
+        })),
+      },
+    },
+    include: {
+      participants: {
+        include: {
+          child: true,
+        },
+      },
     },
   });
 

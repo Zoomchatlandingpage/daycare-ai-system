@@ -17,7 +17,7 @@ export async function GET() {
 
   const children = await prisma.child.findMany({
     include: {
-      parent_links: {
+      parents: {
         include: {
           parent: true,
         },
@@ -42,11 +42,11 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { full_name, birth_date, classroom, allergies, notes } = body;
+  const { full_name, birth_date, classroom, allergies, medical_notes } = body;
 
-  if (!full_name || !birth_date) {
+  if (!full_name || !birth_date || !classroom) {
     return NextResponse.json(
-      { error: "Nome e data de nascimento são obrigatórios" },
+      { error: "Nome, data de nascimento e turma são obrigatórios" },
       { status: 400 }
     );
   }
@@ -55,9 +55,9 @@ export async function POST(request: NextRequest) {
     data: {
       full_name,
       birth_date: new Date(birth_date),
-      classroom: classroom || null,
+      classroom,
       allergies: allergies || null,
-      notes: notes || null,
+      medical_notes: medical_notes || null,
     },
   });
 

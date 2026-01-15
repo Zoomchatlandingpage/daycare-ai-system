@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     },
     include: {
       child: true,
-      reported_by_teacher: true,
+      recorded_by: true,
     },
     orderBy: { occurred_at: "desc" },
     take: 50,
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let reportedBy: string | null = null;
+  let recordedById: string | null = null;
 
   if (role === "TEACHER") {
     const teacher = await prisma.teacher.findUnique({
@@ -96,18 +96,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    reportedBy = teacher.id;
+    recordedById = teacher.id;
   } else {
     const adminTeacher = await prisma.teacher.findUnique({
       where: { user_id: session.user.id },
     });
-    reportedBy = adminTeacher?.id || null;
+    if (!adminTeacher) {
+      return NextResponse.json(
+        { error: "Administrador precisa de perfil de professor para registrar incidente" },
+        { status: 400 }
+      );
+    }
+    recordedById = adminTeacher.id;
   }
 
   const incident = await prisma.incident.create({
     data: {
       child_id,
-      reported_by: reportedBy,
+      recorded_by_id: recordedById,
       severity,
       description,
       action_taken: action_taken || null,

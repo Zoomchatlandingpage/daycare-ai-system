@@ -26,7 +26,6 @@ export async function GET() {
 
   const children = await prisma.child.findMany({
     where: {
-      is_active: true,
       ...(classroom ? { classroom } : {}),
     },
     orderBy: { full_name: "asc" },

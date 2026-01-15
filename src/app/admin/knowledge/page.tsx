@@ -10,7 +10,7 @@ interface Document {
   id: string;
   title: string;
   content: string;
-  category: string;
+  document_type: string;
   tags: string[];
   is_active: boolean;
   created_at: string;
@@ -27,7 +27,7 @@ export default function KnowledgePage() {
   const [formData, setFormData] = useState({
     title: "",
     content: "",
-    category: "general",
+    document_type: "FAQ",
     tags: "",
   });
 
@@ -77,7 +77,7 @@ export default function KnowledgePage() {
         setFormData({
           title: "",
           content: "",
-          category: "general",
+          document_type: "FAQ",
           tags: "",
         });
         fetchDocuments();
@@ -90,15 +90,16 @@ export default function KnowledgePage() {
   const filteredDocuments = documents.filter(
     (doc) =>
       doc.title.toLowerCase().includes(search.toLowerCase()) ||
-      doc.category.toLowerCase().includes(search.toLowerCase())
+      doc.document_type.toLowerCase().includes(search.toLowerCase())
   );
 
-  const categoryColors: Record<string, string> = {
-    general: "bg-gray-100 text-gray-700",
-    policy: "bg-blue-100 text-blue-700",
-    safety: "bg-red-100 text-red-700",
-    curriculum: "bg-green-100 text-green-700",
-    faq: "bg-purple-100 text-purple-700",
+  const typeColors: Record<string, string> = {
+    FAQ: "bg-purple-100 text-purple-700",
+    POLICY: "bg-blue-100 text-blue-700",
+    SCHEDULE: "bg-green-100 text-green-700",
+    RULES: "bg-red-100 text-red-700",
+    CURRICULUM: "bg-yellow-100 text-yellow-700",
+    HEALTH_PROTOCOL: "bg-pink-100 text-pink-700",
   };
 
   if (status === "loading" || loading) {
@@ -161,10 +162,10 @@ export default function KnowledgePage() {
                   </h3>
                   <span
                     className={`inline-block px-2 py-0.5 text-xs rounded mt-1 ${
-                      categoryColors[doc.category] || categoryColors.general
+                      typeColors[doc.document_type] || "bg-gray-100 text-gray-700"
                     }`}
                   >
-                    {doc.category}
+                    {doc.document_type}
                   </span>
                 </div>
               </div>
@@ -220,20 +221,21 @@ export default function KnowledgePage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Categoria
+                  Tipo de Documento
                 </label>
                 <select
-                  value={formData.category}
+                  value={formData.document_type}
                   onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
+                    setFormData({ ...formData, document_type: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="general">Geral</option>
-                  <option value="policy">Políticas</option>
-                  <option value="safety">Segurança</option>
-                  <option value="curriculum">Currículo</option>
-                  <option value="faq">FAQ</option>
+                  <option value="FAQ">FAQ</option>
+                  <option value="POLICY">Políticas</option>
+                  <option value="SCHEDULE">Horários</option>
+                  <option value="RULES">Regras</option>
+                  <option value="CURRICULUM">Currículo</option>
+                  <option value="HEALTH_PROTOCOL">Protocolo de Saúde</option>
                 </select>
               </div>
               <div>

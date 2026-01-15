@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Check, Star } from "lucide-react";
 
-const areaOptions = [
+const skillOptions = [
   { value: "motor", label: "Motor", emoji: "🏃" },
   { value: "cognitive", label: "Cognitivo", emoji: "🧠" },
   { value: "language", label: "Linguagem", emoji: "💬" },
@@ -21,8 +21,9 @@ function LearningContent() {
   const searchParams = useSearchParams();
   const childId = searchParams.get("child");
 
-  const [area, setArea] = useState("");
-  const [milestone, setMilestone] = useState("");
+  const [activity, setActivity] = useState("");
+  const [description, setDescription] = useState("");
+  const [skills, setSkills] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -38,8 +39,14 @@ function LearningContent() {
     }
   }, [status, session, router]);
 
+  const toggleSkill = (skill: string) => {
+    setSkills((prev) =>
+      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
+    );
+  };
+
   const handleSubmit = async () => {
-    if (!childId || !area || !milestone) return;
+    if (!childId || !activity || !description) return;
 
     setSaving(true);
     try {
@@ -47,10 +54,12 @@ function LearningContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          child_id: childId,
-          area,
-          milestone,
+          child_ids: [childId],
+          activity,
+          description,
+          skills,
           notes,
+          is_group: false,
         }),
       });
 
@@ -109,14 +118,25 @@ function LearningContent() {
         </div>
 
         <div className="mb-6">
-          <h2 className="font-medium text-gray-700 mb-3">Área de Desenvolvimento *</h2>
+          <h2 className="font-medium text-gray-700 mb-3">Atividade *</h2>
+          <input
+            type="text"
+            value={activity}
+            onChange={(e) => setActivity(e.target.value)}
+            placeholder="Ex: Brincadeira com blocos"
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          />
+        </div>
+
+        <div className="mb-6">
+          <h2 className="font-medium text-gray-700 mb-3">Habilidades Desenvolvidas</h2>
           <div className="grid grid-cols-2 gap-2">
-            {areaOptions.map((option) => (
+            {skillOptions.map((option) => (
               <button
                 key={option.value}
-                onClick={() => setArea(option.value)}
+                onClick={() => toggleSkill(option.value)}
                 className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition ${
-                  area === option.value
+                  skills.includes(option.value)
                     ? "border-green-500 bg-green-50"
                     : "border-gray-200 bg-white"
                 }`}
@@ -129,12 +149,12 @@ function LearningContent() {
         </div>
 
         <div className="mb-6">
-          <h2 className="font-medium text-gray-700 mb-3">Marco/Conquista *</h2>
-          <input
-            type="text"
-            value={milestone}
-            onChange={(e) => setMilestone(e.target.value)}
-            placeholder="Ex: Aprendeu a contar até 10"
+          <h2 className="font-medium text-gray-700 mb-3">Descrição *</h2>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={4}
+            placeholder="Descreva o que a criança aprendeu ou conquistou..."
             className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
         </div>
@@ -144,8 +164,8 @@ function LearningContent() {
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            rows={4}
-            placeholder="Detalhes sobre o contexto, como demonstrou, etc."
+            rows={3}
+            placeholder="Detalhes adicionais..."
             className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
         </div>
@@ -154,7 +174,7 @@ function LearningContent() {
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t">
         <button
           onClick={handleSubmit}
-          disabled={saving || !area || !milestone}
+          disabled={saving || !activity || !description}
           className="w-full bg-green-600 text-white py-4 rounded-xl font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
           {saving ? "Salvando..." : "Registrar Aprendizado"}
