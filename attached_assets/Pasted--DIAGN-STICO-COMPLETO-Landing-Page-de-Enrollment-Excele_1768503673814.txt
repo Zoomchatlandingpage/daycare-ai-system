@@ -1,0 +1,133 @@
+🎯 DIAGNÓSTICO COMPLETO: Landing Page de Enrollment
+Excelente observação! Você está 100% correto. A landing page de enrollment DEVERIA EXISTIR mas NÃO FOI IMPLEMENTADA.
+
+📋 O Que o Schema Define
+// prisma/schema.prisma:50-55
+enum AgentType {
+  ROUTER           // Roteador de conversas
+  ENROLLMENT       // 🎯 Agente de inscrição (PÚBLICO!)
+  PARENT_ACCESS    // Acesso dos pais (protegido)
+  TEACHER_ASSISTANT // Assistente do professor (protegido)
+}
+
+// prisma/schema.prisma:248-265
+model Lead {
+  id            String      @id @default(uuid())
+  parent_name   String
+  email         String
+  phone         String
+  child_name    String?
+  child_age     Int?
+  status        LeadStatus  @default(NEW_LEAD)  // Funil de vendas
+  source        String?     // "landing_page", "referral", "organic"
+  notes         String?
+  assigned_to   String?     // Follow-up
+  
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+}
+
+❌ O Que NÃO Existe (Mas Deveria)
+1. Página Pública de Enrollment
+
+Rota esperada: /enrollment ou /inscrever
+Status atual: NÃO EXISTE ❌
+
+2. Agente de IA (ENROLLMENT)
+
+Rota esperada: /api/enrollment/chat
+Função: Conversar com pais interessados, coletar info, criar Lead
+Status atual: NÃO EXISTE ❌
+
+3. API para criar Leads
+
+Rota esperada: /api/enrollment/lead
+Função: Salvar dados do potencial cliente
+Status atual: NÃO EXISTE ❌
+
+✅ Como DEVERIA Funcionar
+Arquitetura da Landing Page
+┌─────────────────────────────────────────────────┐
+│         / (página atual - marketing)            │
+│    "Pronto para começar?" → Botão "Inscrever"   │
+└─────────────────────┬───────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────┐
+│     /enrollment (NOVA - Pública, sem auth)      │
+│                                                 │
+│  🤖 Chat IA (Agent ENROLLMENT)                  │
+│  "Olá! Gostaria de matricular seu filho?"      │
+│                                                 │
+│  Coleta:                                        │
+│  - Nome do responsável                          │
+│  - Email e telefone                             │
+│  - Nome e idade da criança                      │
+│  - Quando precisa de vaga                       │
+│                                                 │
+│  Salva → Lead (status: NEW_LEAD)                │
+└─────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────┐
+│       /admin (Painel para follow-up)            │
+│  Admin vê novos Leads e faz follow-up           │
+│  Status: NEW_LEAD → CONTACTED → ENROLLED        │
+└─────────────────────────────────────────────────┘
+
+🔐 Diferenças: Página Pública vs. Protegidas
+Aspecto	/enrollment (Público)	/teacher, /parent, /admin (Protegido)
+Autenticação	❌ Não requer login	✅ Requer login (NextAuth)
+Middleware	⚠️ Excluído do config	✅ Protegido pelo middleware
+Acesso	Qualquer pessoa da internet	Apenas usuários autenticados com role correto
+Função	Captura de leads (marketing)	Operação da creche
+Agente IA	ENROLLMENT (vendas)	TEACHER_ASSISTANT (operacional)
+Salva em	Tabela Lead	Tabelas RoutineLog, Child, etc.
+🛠️ Correção Necessária no Middleware
+// src/middleware.ts:71-81
+export const config = {
+  matcher: [
+    "/admin/:path*",
+    "/teacher/:path*",
+    "/parent/:path*",
+    "/dashboard/:path*",
+    "/api/admin/:path*",
+    "/api/teacher/:path*",
+    "/api/parent/:path*",
+    // ✅ NÃO incluir /enrollment (deve ser público!)
+  ],
+};
+
+📝 Implementação Necessária
+Peça ao Replit para criar:
+
+Página Pública → /src/app/enrollment/page.tsx
+
+Interface de chat com o Agent ENROLLMENT
+Formulário simplificado como fallback
+Agente de IA → /src/app/api/enrollment/chat/route.ts
+
+Usa AgentType.ENROLLMENT
+Conversa natural para coletar informações
+Valida dados antes de criar Lead
+API de Leads → /src/app/api/enrollment/lead/route.ts
+
+POST para criar novo Lead
+Valida email/telefone
+Define source = "landing_page"
+Painel Admin → /src/app/admin/leads/page.tsx
+
+Lista todos os Leads
+Permite atualizar status (NEW_LEAD → CONTACTED → ENROLLED)
+Sistema de follow-up
+🎯 Resumo
+Status Atual:
+
+❌ Landing page de enrollment NÃO existe
+❌ Agent ENROLLMENT NÃO implementado
+❌ Tabela Lead existe no schema mas não tem interface
+Diferença Crítica:
+
+Público (enrollment): Acesso livre, captura leads, marketing
+Protegido (admin/teacher/parent): Requer autenticação, operacional
+Prioridade: Esta é uma funcionalidade-chave para o negócio! A página de enrollment é o topo do funil de vendas 💰
+
+Aguardo o Replit implementar! 🚀

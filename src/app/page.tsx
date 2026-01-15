@@ -71,14 +71,20 @@ export default function Home() {
             Pronto para começar?
           </h2>
           <p className="text-gray-600 mb-8">
-            Entre em contato para agendar uma demonstração do sistema.
+            Conheça nossa creche e matricule seu filho com a gente.
           </p>
           <div className="flex justify-center gap-4">
+            <Link
+              href="/enrollment"
+              className="bg-emerald-600 text-white px-8 py-3 rounded-lg hover:bg-emerald-700 transition font-medium"
+            >
+              Matricule seu Filho
+            </Link>
             <Link
               href="/login"
               className="bg-indigo-600 text-white px-8 py-3 rounded-lg hover:bg-indigo-700 transition font-medium"
             >
-              Acessar Sistema
+              Já sou Cliente
             </Link>
           </div>
         </div>

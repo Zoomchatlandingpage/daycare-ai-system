@@ -153,8 +153,9 @@ Routes chat requests based on user session:
   - [x] Knowledge base integration
   - [x] Magic Input for teacher app (AI text interpretation)
   - [x] /api/teacher/interpret endpoint
+  - [x] Lead capture integration (/enrollment page + /api/enrollment/lead)
+  - [x] Admin leads management (/admin/leads)
   - [ ] Rate limiting / 3 strikes system
-  - [ ] Lead capture integration
 
 ## User Preferences
 - Language: Portuguese (Brazilian)
