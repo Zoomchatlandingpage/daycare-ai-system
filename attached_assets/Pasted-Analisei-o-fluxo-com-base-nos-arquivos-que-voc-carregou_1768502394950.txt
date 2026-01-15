@@ -1,0 +1,82 @@
+Analisei o fluxo com base nos arquivos que você carregou e a realidade é dura: **Nós NÃO estamos na Fase 4.**
+
+Se você tentar rodar o sistema agora, ele vai quebrar. Existe uma **incompatibilidade fatal** entre o Código (que o Replit escreveu) e o Banco de Dados (Schema) que definimos. Além disso, a "Mágica da IA" (o input de voz) **não existe** no código atual.
+
+Aqui está o diagnóstico do porquê o fluxo está quebrado:
+
+### 1. 🚨 O Erro Fatal: Código vs. Schema
+
+O código da API (`route.ts`) está tentando salvar dados em colunas que **não existem** no banco de dados.
+
+* **O Código (`POST /api/teacher/routine`) tenta salvar:**
+* `log_type` (ex: "meal")
+* `details` (JSON genérico)
+* `teacher_id`
+
+
+* **O Schema (`prisma/schema.prisma`) exige:**
+* `mood` (Enum)
+* `food_intake_pct` (Int)
+* `recorded_by_id` (não `teacher_id`)
+* **NÃO tem** `log_type` nem `details`.
+
+
+
+**Resultado:** Se um professor tentar salvar algo, o sistema dará erro 500 imediatamente.
+
+### 2. 🧠 O Cérebro (IA) Está Ausente
+
+Você mencionou a "Fase 4", que seria o refinamento, mas a **Fase 3 (Implementação da IA)** foi pulada ou perdida.
+
+* **UI do Professor (`page.tsx`):** Ainda mostra a "grade de botões" antiga (legado). **Não existe** o campo de input de texto/voz "Magic Input".
+* **Rota de Interpretação:** O arquivo `src/app/api/teacher/interpret/route.ts` (onde o Agent 04 viveria) **não existe**.
+
+---
+
+### 🛠️ O Plano de Correção (Obrigatório)
+
+Para chegar na Fase 4, precisamos consertar a Fase 3. Você precisa dar este comando ao Replit agora para alinhar o código ao banco e criar a IA:
+
+**Copie e cole isto no Replit Agent:**
+
+```markdown
+# CRITICAL FIX: ALIGN CODE WITH SCHEMA & ACTIVATE AI
+
+The current code in `/api/teacher/routine` is incompatible with our Prisma Schema.
+- Schema expects: `food_intake_pct`, `sleep_minutes`, `mood`.
+- Code is sending: `log_type`, `details`.
+
+**TASK 1: Fix the Manual API (`/api/teacher/routine/route.ts`)**
+Rewrite the POST method to accept the structured fields directly:
+```typescript
+const { child_id, mood, food_intake_pct, sleep_minutes, diaper } = body;
+// Create using the correct schema fields:
+await prisma.routineLog.create({
+  data: {
+    child_id,
+    recorded_by_id: teacherId, // Map correctly to recorded_by_id
+    mood,
+    food_intake_pct,
+    sleep_minutes,
+    diaper,
+    logged_at: new Date()
+  }
+})
+
+```
+
+**TASK 2: Create the "Magic Input" AI Route (`/api/teacher/interpret/route.ts`)**
+Implement Agent 04 here.
+
+1. Receive text input (ex: "João ate all lunch").
+2. Use OpenAI to extract JSON: `{ food_intake_pct: 100, mood: "HAPPY" }`.
+3. Return this JSON to the frontend so the teacher can confirm.
+
+**TASK 3: Update Teacher UI (`/teacher/page.tsx`)**
+Replace the old icon grid with the "Magic Input" interface described in `docs/interfaces/teacher-app.md`.
+
+```
+
+Sem isso, você tem um carro bonito (Frontend) sem motor (Backend compatível) e sem motorista (IA). Execute esse fix e o fluxo funcionará.
+
+```
